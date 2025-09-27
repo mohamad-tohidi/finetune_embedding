@@ -48,6 +48,8 @@ def main():
         results = []
         for bucket in response["aggregations"]["by_category"]["buckets"]:
             category = bucket["key"]
+            if category == "هیچکدام":
+                continue
             docs = bucket["top_docs"]["hits"]["hits"]
             for doc in docs:
                 _id = doc["_id"]
