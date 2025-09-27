@@ -7,7 +7,7 @@ import torch
 # Make allocator more flexible (do this before importing heavy libs sometimes)
 os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
-from sentence_transformers import InputExample, SentenceTransformer, losses, models
+from sentence_transformers import InputExample, SentenceTransformer, losses
 from torch.utils.data import DataLoader
 
 # If you want to force CPU for debugging:
@@ -17,12 +17,11 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
 # small model (you already used this)
-model_name = "intfloat/multilingual-e5-small"
-word_embedding_model = models.Transformer(model_name, max_seq_length=32)
-pooling_model = models.Pooling(word_embedding_model.get_word_embedding_dimension())
-model = SentenceTransformer(
-    modules=[word_embedding_model, pooling_model], device=device
-)
+model_name = "intfloat/multilingual-e5-large"
+# word_embedding_model = models.Transformer(model_name, max_seq_length=512)
+# pooling_method = word_embedding_model.get_word_embedding_dimension()
+# pooling_model = models.Pooling(pooling_method)
+model = SentenceTransformer(model_name, device=device)
 
 # free any cached memory before creating dataloaders / optimizer
 if device == "cuda":
@@ -42,7 +41,7 @@ train_data = [InputExample(texts=[s, s]) for s in train_sentences]
 
 # **IMPORTANT**: drastically reduce batch_size for small GPU
 # try 16, if still OOM -> 8 -> 4 -> 2
-BATCH_SIZE = 8
+BATCH_SIZE = 1
 
 train_dataloader = DataLoader(
     train_data,
@@ -60,7 +59,8 @@ model.fit(
     train_objectives=[(train_dataloader, train_loss)],
     epochs=3,
     show_progress_bar=True,
-    use_amp=True,  # <-- enable mixed precision (FP16)
+    # weight_decay=0.02,
+    use_amp=True,
 )
 
 model.save("fine_tune/output/multilingual-e5-small-finetuned-using-simcse")
