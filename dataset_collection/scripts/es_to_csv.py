@@ -1,9 +1,9 @@
-import logging
 import csv
+import logging
 
 from elasticsearch import Elasticsearch
 
-from utils import ES_URL, ES_USER, ES_PASSWORD, INDEX_NAME
+from dataset_collection.utils import ES_PASSWORD, ES_URL, ES_USER, INDEX_NAME
 
 # Configure logger
 logging.basicConfig(
@@ -56,7 +56,7 @@ def main():
         logger.info(f"Collected all results from index: {INDEX_NAME}")
 
         # Save to CSV
-        csv_file = "embedding_data_engineering/data/raw_es_results.csv"
+        csv_file = "dataset_collection/data/raw_es_results.csv"
         with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=["_id", "content", "category"])
             writer.writeheader()
