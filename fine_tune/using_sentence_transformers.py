@@ -134,7 +134,7 @@ train_loss = losses.MultipleNegativesRankingLoss(model)
 # In our case, this will be: "eval_val_q_rel_pairs_cosine_spearman".
 # We also set `greater_is_better=True` because a higher correlation score is better.
 
-metric_name = f"eval_{evaluator.name}_{evaluator.main_similarity}_spearman"
+metric_name = "eval_val_q_rel_pairs_spearman_cosine"
 print(f"\nThe model will be saved based on the best score for the metric: '{metric_name}'")
 
 args = SentenceTransformerTrainingArguments(
