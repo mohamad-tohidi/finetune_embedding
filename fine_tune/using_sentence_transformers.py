@@ -12,6 +12,14 @@ from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 from sentence_transformers.training_args import BatchSamplers
 import os
 os.environ["WANDB_DISABLED"] = "true" 
+# Set PyTorch CUDA allocation config before importing torch to reduce fragmentation.
+# This must be set before torch is imported.
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True,max_split_size_mb:128"
+os.environ["WANDB_DISABLED"] = "true"
+
+
+torch.backends.cudnn.benchmark = True
+
 
 data_files="dataset_collection/data/all_es_data.csv"
 output_dir="fine_tune/output/gte-multilingual-base-finetuned-using-simcse"
@@ -139,6 +147,7 @@ metric_name = "eval_val_q_rel_pairs_spearman_cosine"
 print(f"\nThe model will be saved based on the best score for the metric: '{metric_name}'")
 
 args = SentenceTransformerTrainingArguments(
+    fp16=True,
     report_to=None,
     # Training-specific arguments
     num_train_epochs=3,
