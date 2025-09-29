@@ -1,6 +1,5 @@
 # eval_embeddings_ranking.py
 import json
-import os
 from typing import Dict, List
 
 import numpy as np
@@ -12,14 +11,14 @@ from sklearn.metrics import ndcg_score
 # ---------------------------
 # Config
 # ---------------------------
-MODEL_BASE = "intfloat/multilingual-e5-small"  # original
+MODEL_BASE = "Alibaba-NLP/gte-multilingual-base"  
 MODEL_FINE = (
-    "fine_tune/output/multilingual-e5-small-finetuned-using-simcse"  # your finetuned
+    "/home/mohamad-tohidi/Downloads/gte-multilingual-base-finetuned-using-simcse-20250929T094107Z-1-001/gte-multilingual-base-finetuned-using-simcse/checkpoint-48"  
 )
-DEVICE = "cuda"  # or "cpu" if you prefer; will auto-fallback if unavailable
-BATCH_SIZE = 64  # for encode() batching; reduce if OOM
+DEVICE = "cpu" 
+BATCH_SIZE = 2  
 SAVE_CSV = "dataset_collection/data/eval_results.csv"
-NDCG_KS = [1, 3, 5]  # ks to report
+NDCG_KS = [1, 3, 5]  
 
 # ---------------------------
 # Dataset: paste or load your list here
@@ -75,7 +74,7 @@ def safe_ndcg(y_true_rels: List[int], pred_scores: List[float], k: int):
 # ---------------------------
 def load_model(model_path_or_name: str, device: str):
     print("Loading", model_path_or_name, "on", device)
-    return SentenceTransformer(model_path_or_name, device=device)
+    return SentenceTransformer(model_path_or_name, device=device, trust_remote_code=True)
 
 
 def encode_batch(
