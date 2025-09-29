@@ -51,17 +51,30 @@ def pre_process_dataset(hf_dataset, text_col="question.text.fa"):
     return ds
 
 
+print("Loading and preparing training data...")
 train_dataset_raw = load_dataset("csv", data_files=data_files, cache_dir=None)
 train_dataset = pre_process_dataset(train_dataset_raw, text_col="question.text.fa")
 
 
+# This prepares the data for a SimCSE-like unsupervised training setup.
 train_dataset = train_dataset.map(
     lambda example: {"anchor": example["text"], "positive": example["text"]},
     remove_columns=["text"]
 )
 
-print(train_dataset)
+# ======================================================================
+# ADD THIS PART TO LIMIT THE DATASET SIZE
+# ======================================================================
+num_training_samples = 1000 
 
+# Use .select() to create a smaller subset of the dataset
+if len(train_dataset) > num_training_samples:
+    train_dataset = train_dataset.select(range(num_training_samples))
+# ======================================================================
+
+
+print("Training data prepared (and limited):")
+print(train_dataset)
 
 print("\nLoading and preparing evaluation data...")
 with open(evaluation_data, "r", encoding="utf-8") as f:
