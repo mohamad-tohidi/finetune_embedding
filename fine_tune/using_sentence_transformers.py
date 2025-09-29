@@ -10,7 +10,8 @@ from sentence_transformers import (
 )
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 from sentence_transformers.training_args import BatchSamplers
-
+import os
+os.environ["WANDB_DISABLED"] = "true" 
 
 data_files="dataset_collection/data/all_es_data.csv"
 output_dir="fine_tune/output/gte-multilingual-base-finetuned-using-simcse"
