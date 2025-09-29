@@ -1,10 +1,9 @@
-import csv
 import json
 
 import torch
 from datasets import load_dataset
 from sentence_transformers import (
-    # InputExample,
+    InputExample,
     SentenceTransformer,
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
@@ -27,9 +26,44 @@ model_name = "Alibaba-NLP/gte-multilingual-base"
 model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
 
 
-train_dataset = load_dataset("csv", data_files=data_files, cache_dir=None)
+def pre_process_dataset(hf_dataset, text_col="question.text.fa"):
+    """
+    Convert a HuggingFace Dataset or DatasetDict to a HuggingFace Dataset with a single
+    'text' column (cleaned & filtered). Works whether hf_dataset is a Dataset or a
+    DatasetDict containing 'train'.
+    """
+    # Accept either DatasetDict or Dataset
+    if isinstance(hf_dataset, dict) and "train" in hf_dataset:
+        ds = hf_dataset["train"]
+    else:
+        ds = hf_dataset
 
-# print(train_dataset["train"].column_names) 
+    if text_col not in ds.column_names:
+        raise ValueError(f"Column '{text_col}' not found in dataset columns: {ds.column_names}")
+
+    ds = ds.map(
+        lambda example: {"text": (str(example.get(text_col, "") or "")).strip()},
+        remove_columns=ds.column_names,
+        batched=False,
+    )
+
+    ds = ds.filter(lambda example: example["text"] != "")
+
+    return ds
+
+
+train_dataset_raw = load_dataset("csv", data_files=data_files, cache_dir=None)
+train_dataset = pre_process_dataset(train_dataset_raw, text_col="question.text.fa")
+
+
+train_dataset = train_dataset.map(
+    lambda example: {"anchor": example["text"], "positive": example["text"]},
+    remove_columns=["text"]
+)
+
+print(train_dataset)
+
+
 
 with open(evaluation_data, "r", encoding="utf-8") as ef:
     eval_items = json.load(ef)
@@ -50,9 +84,8 @@ for item in eval_items:
 
 
 evaluator = EmbeddingSimilarityEvaluator(
-    eval_qs, eval_ps, eval_scores, name="val_q_rel_pairs"
+    eval_qs, eval_ps, eval_scores, name="val_q_rel_pairs", main_similarity="cosine"
 )
-
 
 train_loss = losses.MultipleNegativesRankingLoss(model)
 
@@ -64,9 +97,10 @@ args = SentenceTransformerTrainingArguments(
     save_strategy="steps",
     save_steps=500,
     eval_strategy="steps",
+    eval_steps=500,
     load_best_model_at_end=True,
-    metric_for_best_model="eval_loss",
-    greater_is_better=False,
+    metric_for_best_model="eval_val_q_rel_pairs_spearman_cosine",
+    greater_is_better=True,
     save_total_limit=1,
     output_dir=output_dir,
 )
