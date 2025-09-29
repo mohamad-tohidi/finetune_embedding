@@ -65,7 +65,7 @@ train_dataset = train_dataset.map(
 # ======================================================================
 # ADD THIS PART TO LIMIT THE DATASET SIZE
 # ======================================================================
-num_training_samples = 1000 
+num_training_samples = 20000 
 
 # Use .select() to create a smaller subset of the dataset
 if len(train_dataset) > num_training_samples:
@@ -145,7 +145,7 @@ args = SentenceTransformerTrainingArguments(
     learning_rate=2e-5,
     # Evaluation-specific arguments
     eval_strategy="steps",
-    eval_steps=10,
+    eval_steps=100,
     per_device_eval_batch_size=4,
     # Save-specific arguments
     save_strategy="steps",
