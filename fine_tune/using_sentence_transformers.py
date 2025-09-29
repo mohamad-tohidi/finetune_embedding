@@ -138,6 +138,7 @@ metric_name = "eval_val_q_rel_pairs_spearman_cosine"
 print(f"\nThe model will be saved based on the best score for the metric: '{metric_name}'")
 
 args = SentenceTransformerTrainingArguments(
+    report_to=None,
     # Training-specific arguments
     num_train_epochs=3,
     per_device_train_batch_size=2,
