@@ -145,12 +145,12 @@ args = SentenceTransformerTrainingArguments(
     learning_rate=2e-5,
     # Evaluation-specific arguments
     eval_strategy="steps",
-    eval_steps=500,
+    eval_steps=10,
     per_device_eval_batch_size=4,
     # Save-specific arguments
     save_strategy="steps",
     save_steps=500,
-    save_total_limit=2,
+    save_total_limit=1,
     # Arguments for tracking the best model
     load_best_model_at_end=True,
     metric_for_best_model=metric_name,
