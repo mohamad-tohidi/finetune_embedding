@@ -4,7 +4,7 @@ import json
 import torch
 from datasets import load_dataset
 from sentence_transformers import (
-    InputExample,
+    # InputExample,
     SentenceTransformer,
     SentenceTransformerTrainer,
     SentenceTransformerTrainingArguments,
@@ -13,7 +13,12 @@ from sentence_transformers import (
 from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
 
+
 data_files="dataset_collection/data/all_es_data.csv"
+output_dir="fine_tune/output/gte-multilingual-base-finetuned-using-simcse"
+evaluation_data = "dataset_collection/data/evaluation_data.json"
+
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
@@ -26,7 +31,7 @@ train_dataset = load_dataset("csv", data_files=data_files, cache_dir=None)
 
 # print(train_dataset["train"].column_names) 
 
-with open("dataset_collection/data/evaluation_data.json", "r", encoding="utf-8") as ef:
+with open(evaluation_data, "r", encoding="utf-8") as ef:
     eval_items = json.load(ef)
 eval_qs = []
 eval_ps = []
@@ -63,7 +68,7 @@ args = SentenceTransformerTrainingArguments(
     metric_for_best_model="eval_loss",
     greater_is_better=False,
     save_total_limit=1,
-    output_dir="fine_tune/output/gte-multilingual-base-finetuned-using-simcse",
+    output_dir=output_dir,
 )
 
 trainer = SentenceTransformerTrainer(
