@@ -22,7 +22,7 @@ model_name = "Alibaba-NLP/gte-multilingual-base"
 model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
 
 
-train_dataset = load_dataset("csv", data_files=data_files)
+train_dataset = load_dataset("csv", data_files=data_files, cache_dir=None)
 
 print(train_dataset["train"].column_names) 
 
