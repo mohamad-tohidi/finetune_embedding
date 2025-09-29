@@ -1,66 +1,79 @@
-# fine_tune_small.py
 import csv
-import os
+import json
 
 import torch
+from datasets import Dataset
+from sentence_transformers import (
+    InputExample,
+    SentenceTransformer,
+    SentenceTransformerTrainer,
+    SentenceTransformerTrainingArguments,
+    losses,
+)
+from sentence_transformers.evaluation import EmbeddingSimilarityEvaluator
 
-# Make allocator more flexible (do this before importing heavy libs sometimes)
-os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
-
-from sentence_transformers import InputExample, SentenceTransformer, losses
-from torch.utils.data import DataLoader
-
-# If you want to force CPU for debugging:
-# device = "cpu"
-# Otherwise let SentenceTransformers pick GPU automatically
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print("Using device:", device)
 
-# small model (you already used this)
-model_name = "intfloat/multilingual-e5-large"
-# word_embedding_model = models.Transformer(model_name, max_seq_length=512)
-# pooling_method = word_embedding_model.get_word_embedding_dimension()
-# pooling_model = models.Pooling(pooling_method)
-model = SentenceTransformer(model_name, device=device)
+model_name = "Alibaba-NLP/gte-multilingual-base"
+model = SentenceTransformer(model_name, device=device, trust_remote_code=True)
 
-# free any cached memory before creating dataloaders / optimizer
-if device == "cuda":
-    torch.cuda.empty_cache()
 
-# Load data
 with open(
     "dataset_collection/data/raw_es_results.csv", "r", newline="", encoding="utf-8"
 ) as f:
     reader = csv.reader(f)
     rows = list(reader)
-    # skip header if present
     train_sentences = [row[1] for row in rows[1:]] if len(rows) > 0 else []
+train_examples = [InputExample(texts=[s, s]) for s in train_sentences]
+train_dict = {"texts": [ex.texts for ex in train_examples]}
+train_dataset = Dataset.from_dict(train_dict)
 
-# Create InputExamples
-train_data = [InputExample(texts=[s, s]) for s in train_sentences]
 
-# **IMPORTANT**: drastically reduce batch_size for small GPU
-# try 16, if still OOM -> 8 -> 4 -> 2
-BATCH_SIZE = 1
-
-train_dataloader = DataLoader(
-    train_data,
-    batch_size=BATCH_SIZE,
-    shuffle=True,
-    num_workers=2,  # set 0 if you hit dataloader issues
-    pin_memory=(device == "cuda"),
+with open("dataset_collection/data/evaluation_data.json", "r", encoding="utf-8") as ef:
+    eval_items = json.load(ef)
+eval_qs = []
+eval_ps = []
+eval_scores = []
+for item in eval_items:
+    q = item.get("question", "").strip()
+    rels = item.get("relevant_questions", [])
+    for rel in rels:
+        p = rel.get("content", "").strip()
+        rank = rel.get("rank", 1)
+        score = max(0.0, 5.0 - 0.5 * (rank - 1))
+        if q and p:
+            eval_qs.append(q)
+            eval_ps.append(p)
+            eval_scores.append(score)
+evaluator = EmbeddingSimilarityEvaluator(
+    eval_qs, eval_ps, eval_scores, name="val_q_rel_pairs"
 )
+
 
 train_loss = losses.MultipleNegativesRankingLoss(model)
 
-# Fit: enable AMP (mixed precision). This reduces memory usage a lot.
-# Also keep show_progress_bar True for feedback.
-model.fit(
-    train_objectives=[(train_dataloader, train_loss)],
-    epochs=3,
-    show_progress_bar=True,
-    # weight_decay=0.02,
-    use_amp=True,
+args = SentenceTransformerTrainingArguments(
+    gradient_accumulation_steps=16,
+    per_device_train_batch_size=8,
+    per_device_eval_batch_size=8,
+    num_train_epochs=3,
+    save_strategy="steps",
+    save_steps=500,
+    eval_strategy="steps",
+    load_best_model_at_end=True,
+    metric_for_best_model="eval_loss",
+    greater_is_better=False,
+    save_total_limit=1,
+    output_dir="fine_tune/output/gte-multilingual-base-finetuned-using-simcse",
 )
 
-model.save("fine_tune/output/multilingual-e5-small-finetuned-using-simcse")
+trainer = SentenceTransformerTrainer(
+    model=model,
+    args=args,
+    train_dataset=train_dataset,
+    evaluator=evaluator,
+    loss=train_loss,
+)
+
+trainer.train()
