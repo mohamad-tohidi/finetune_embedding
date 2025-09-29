@@ -140,13 +140,13 @@ print(f"\nThe model will be saved based on the best score for the metric: '{metr
 args = SentenceTransformerTrainingArguments(
     # Training-specific arguments
     num_train_epochs=3,
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=2,
     gradient_accumulation_steps=16,
     learning_rate=2e-5,
     # Evaluation-specific arguments
     eval_strategy="steps",
     eval_steps=100,
-    per_device_eval_batch_size=4,
+    per_device_eval_batch_size=2,
     # Save-specific arguments
     save_strategy="steps",
     save_steps=500,
