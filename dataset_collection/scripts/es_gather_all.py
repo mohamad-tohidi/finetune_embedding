@@ -2,6 +2,7 @@ import csv
 import logging
 
 from elasticsearch import Elasticsearch, helpers
+from tqdm import tqdm
 
 from dataset_collection.utils import ES_PASSWORD, ES_URL, ES_USER, INDEX_NAME
 
@@ -22,37 +23,33 @@ def main():
     logger.info(f"Connected to ES: {ES_URL}")
 
     try:
-        # Use helpers.scan to get all docs
-        results = []
-        for doc in helpers.scan(
-            es_client,
-            index=INDEX_NAME,
-            query={"query": {"match_all": {}}},
-            preserve_order=False,
-        ):
-            _id = doc["_id"]
-            source = doc["_source"]
-
-            # If you want to extract specific fields, adjust here
-            results.append({"_id": _id, **source})
-
-        logger.info(f"Collected {len(results)} documents from index: {INDEX_NAME}")
-
-        # Save to CSV
         csv_file = "dataset_collection/data/all_es_data.csv"
 
-        # Dynamically get all possible fieldnames from sources
-        fieldnames = set()
-        for r in results:
-            fieldnames.update(r.keys())
-        fieldnames = list(fieldnames)
-
+        # Open CSV file once, write incrementally
         with open(csv_file, mode="w", newline="", encoding="utf-8") as f:
+            fieldnames = ["_id", "question.text.fa"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
-            writer.writerows(results)
 
-        logger.info(f"Saved {len(results)} documents to {csv_file}")
+            # Iterate with tqdm progress bar
+            for doc in tqdm(
+                helpers.scan(
+                    es_client,
+                    index=INDEX_NAME,
+                    query={"query": {"match_all": {}}},
+                    preserve_order=False,
+                ),
+                desc="Exporting documents",
+            ):
+                _id = doc["_id"]
+                source = doc["_source"]
+
+                # Only keep "_id" and "question.text.fa" if exists
+                question_text = source.get("question", {}).get("text", {}).get("fa")
+                if question_text:
+                    writer.writerow({"_id": _id, "question.text.fa": question_text})
+
+        logger.info(f"Export completed. Saved data to {csv_file}")
 
     except Exception as e:
         logger.error(f"Error occurred: {e}")
